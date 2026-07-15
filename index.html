@@ -3,6 +3,8 @@
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+		<meta name="screen-orientation" content="landscape">
+		<meta name="x5-orientation" content="landscape">
 		<meta name="theme-color" content="#000000">
 		<title>마왕님, 마왕성은 누가 지켜요? · 모바일 테스트</title>
 		<style>
@@ -137,8 +139,8 @@ body {
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
-		<div id="rotate-hint">휴대폰을 가로로 돌려서 플레이해 주세요.</div>
-		<button id="fullscreen-button" type="button">전체 화면</button>
+		<div id="rotate-hint">화면을 한 번 탭하면 가로 전체화면으로 시작합니다.<br>지원되지 않으면 휴대폰을 가로로 돌려 주세요.</div>
+		<button id="fullscreen-button" type="button">가로 전체화면</button>
 
 		<noscript>
 			Your browser does not support JavaScript.
@@ -152,23 +154,44 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":["--","--mobile-touch-ui"],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":231473976,"index.wasm":38047590},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":["--","--mobile-touch-ui"],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":231477848,"index.wasm":38047590},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
 const fullscreenButton = document.getElementById('fullscreen-button');
-if (!document.documentElement.requestFullscreen) {
-	fullscreenButton.hidden = true;
-} else {
-	fullscreenButton.addEventListener('click', async () => {
+const fullscreenTarget = document.documentElement;
+const requestFullscreen = fullscreenTarget.requestFullscreen || fullscreenTarget.webkitRequestFullscreen;
+
+async function enterLandscapeMode(withFullscreen) {
+	if (withFullscreen && requestFullscreen && !document.fullscreenElement && !document.webkitFullscreenElement) {
 		try {
-			await document.documentElement.requestFullscreen();
-			if (screen.orientation && screen.orientation.lock) {
-				await screen.orientation.lock('landscape').catch(() => {});
+			const requestResult = requestFullscreen.call(fullscreenTarget, { navigationUI: 'hide' });
+			if (requestResult && typeof requestResult.then === 'function') {
+				await requestResult;
 			}
 		} catch (err) {
-			console.warn('Fullscreen request was rejected.', err);
+			console.info('Fullscreen request was rejected.', err);
 		}
+	}
+	if (screen.orientation && screen.orientation.lock) {
+		try {
+			await screen.orientation.lock('landscape');
+		} catch (err) {
+			console.info('Landscape orientation lock is unavailable.', err);
+		}
+	}
+}
+
+void enterLandscapeMode(false);
+document.addEventListener('pointerdown', () => {
+	void enterLandscapeMode(true);
+}, { once: true, capture: true });
+
+if (!requestFullscreen) {
+	fullscreenButton.hidden = true;
+} else {
+	fullscreenButton.addEventListener('click', () => {
+		void enterLandscapeMode(true);
 	});
 }
 
